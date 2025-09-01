@@ -1,7 +1,15 @@
+require('dotenv').config()
+require("./instrument.js");
+const email = require('@sendgrid/mail');
+const Sentry = require("@sentry/node");
+
+
 const express = require('express')
 const cors = require('cors');
 
-const { PrismaClient } = require('./generated/prisma')
+email.setApiKey(process.env.SENDGRID_API_KEY);
+const { PrismaClient } = require('./generated/prisma');
+const { rent_confirmation_template } = require("./utils/constants.js");
 
 const prisma = new PrismaClient()
 
@@ -62,7 +70,7 @@ app.put('/cars/:id', async (req, res) => {
                 id: req.params.id
             },
             data: {
-                name: req.body.name,n,
+                name: req.body.name, n,
                 category: req.body.category,
                 seats: req.body.seats,
                 price: req.body.price,
@@ -78,6 +86,28 @@ app.put('/cars/:id', async (req, res) => {
         res.status(404).json({ error: "Car not found" })
     }
 })
+
+app.get("/debug-sentry", function mainHandler(req, res) {
+    throw new Error("My first Sentry error!");
+});
+
+app.get('/send-email', async (req, res) => {
+    const emailContent = {
+        to: 'isaaclima64178@gmail.com',
+        from: 'isaaclima64178@gmail.com',
+        subject: 'Enviando um e-mail usando o SendGrid',
+        html: rent_confirmation_template,
+    };
+    try {
+        await email.send(emailContent);
+        res.status(200).json({ message: "Email enviado com sucesso!" });
+    }
+    catch (error) {
+        res.status(500).json({ error: "Erro ao enviar email." })
+    }
+})
+
+Sentry.setupExpressErrorHandler(app);
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
