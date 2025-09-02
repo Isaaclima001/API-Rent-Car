@@ -1,114 +1,29 @@
-require('dotenv').config()
 require("./instrument.js");
-const email = require('@sendgrid/mail');
+
+const express = require("express");
+const cors = require("cors");
+const swaggerUi = require('swagger-ui-express');
+const swaggerFile = require('./swagger-output.json');
+const bodyParser = require('body-parser');
+
+const routes = require('./endpoints.js');
+
+const app = express();
+
+/* Middlewares */
+app.use(bodyParser.json());
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
+
 const Sentry = require("@sentry/node");
+const port = 3001;
 
-
-const express = require('express')
-const cors = require('cors');
-
-email.setApiKey(process.env.SENDGRID_API_KEY);
-const { PrismaClient } = require('./generated/prisma');
-const { rent_confirmation_template } = require("./utils/constants.js");
-
-const prisma = new PrismaClient()
-
-const app = express()
-const port = 3001
-
+// Use as rotas de endpoints.js
 app.use(cors());
 app.use(express.json());
-
-let cars = []
-
-
-app.get('/cars', async (req, res) => {
-    //   ira retornar uma lista de carros com status 200
-    const allCars = await prisma.car.findMany()
-
-    res.status(200).json(allCars)
-})
-
-app.post('/cars', async (req, res) => {
-    console.log(req.body)
-    const car = {
-        name: req.body.name,
-        category: req.body.category,
-        seats: req.body.seats,
-        price: req.body.price,
-        transmission: req.body.transmission,
-        fuel: req.body.fuel,
-        image: req.body.image,
-        available: req.body.available,
-    }
-
-    //   ira adicionar um carro com status 201
-    const newCar = await prisma.car.create({
-        data: car
-    })
-    res.status(201).json(newCar)
-})
-
-app.delete('/cars/:id', async (req, res) => {
-    try {
-        const deletedCar = await prisma.car.delete({
-            where: {
-                id: req.params.id
-            }
-        })
-
-        res.status(200).json(deletedCar)
-    } catch (error) {
-        res.status(404).json({ error: "Car not found" })
-    }
-})
-
-app.put('/cars/:id', async (req, res) => {
-    try {
-        const updatedCar = await prisma.car.update({
-            where: {
-                id: req.params.id
-            },
-            data: {
-                name: req.body.name, n,
-                category: req.body.category,
-                seats: req.body.seats,
-                price: req.body.price,
-                transmission: req.body.transmission,
-                fuel: req.body.fuel,
-                image: req.body.image,
-                available: req.body.available,
-            }
-        })
-
-        res.status(200).json(updatedCar)
-    } catch (error) {
-        res.status(404).json({ error: "Car not found" })
-    }
-})
-
-app.get("/debug-sentry", function mainHandler(req, res) {
-    throw new Error("My first Sentry error!");
-});
-
-app.get('/send-email', async (req, res) => {
-    const emailContent = {
-        to: 'isaaclima64178@gmail.com',
-        from: 'isaaclima64178@gmail.com',
-        subject: 'Enviando um e-mail usando o SendGrid',
-        html: rent_confirmation_template,
-    };
-    try {
-        await email.send(emailContent);
-        res.status(200).json({ message: "Email enviado com sucesso!" });
-    }
-    catch (error) {
-        res.status(500).json({ error: "Erro ao enviar email." })
-    }
-})
+app.use('/', routes);
 
 Sentry.setupExpressErrorHandler(app);
 
-app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`)
-})
+app.listen(port), () => 
+  console.log(`Example app listening on port ${port}`);
